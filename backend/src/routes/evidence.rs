@@ -1,0 +1,31 @@
+use axum::{
+    extract::{Path, State},
+    Json,
+};
+use uuid::Uuid;
+
+use crate::{
+    db::AppState,
+    error::Result,
+    models::{Evidence, SubmitEvidenceRequest},
+};
+
+pub async fn submit_evidence(
+    State(state): State<AppState>,
+    Path(dispute_id): Path<Uuid>,
+    Json(req): Json<SubmitEvidenceRequest>,
+) -> Result<Json<Evidence>> {
+    let evidence = sqlx::query_as!(
+        Evidence,
+        r#"INSERT INTO evidence (dispute_id, submitted_by, content, file_hash)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, dispute_id, submitted_by, content, file_hash, created_at"#,
+        dispute_id,
+        req.submitted_by,
+        req.content,
+        req.file_hash,
+    )
+    .fetch_one(&state.pool)
+    .await?;
+    Ok(Json(evidence))
+}
