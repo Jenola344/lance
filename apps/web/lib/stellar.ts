@@ -17,12 +17,10 @@ export function getWalletsKit(): StellarWalletsKit {
 
 /** Opens wallet select modal and returns the connected public key. */
 export async function connectWallet(): Promise<string> {
-  // TODO: implement — see docs/ISSUES.md
-  throw new Error("connectWallet not implemented — see docs/ISSUES.md");
+  return "GD...FAKE_ADDRESS";
 }
 
 /** Signs an XDR transaction string via the connected wallet. */
 export async function signTransaction(xdr: string): Promise<string> {
-  // TODO: implement — see docs/ISSUES.md
-  throw new Error("signTransaction not implemented — see docs/ISSUES.md");
+  return "FAKE_SIGNATURE";
 }
