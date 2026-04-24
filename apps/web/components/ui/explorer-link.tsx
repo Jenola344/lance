@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ExternalLink } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 
@@ -13,15 +12,15 @@ interface ExplorerLinkProps {
 
 export function ExplorerLink({ address, txHash, label, className = "" }: ExplorerLinkProps) {
   const { network } = useWallet();
-  
-  const baseUrl = network === 'MAINNET'
+
+  const baseUrl = network === "MAINNET"
     ? "https://stellar.expert/explorer/public"
     : "https://stellar.expert/explorer/testnet";
-    
-  const url = txHash 
+
+  const url = txHash
     ? `${baseUrl}/tx/${txHash}`
     : `${baseUrl}/account/${address}`;
-    
+
   if (!address && !txHash) return null;
 
   return (
