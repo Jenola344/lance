@@ -20,11 +20,7 @@ import {
   TransactionBuilder,
   xdr,
 } from "@stellar/stellar-sdk";
-import {
-  Server as SorobanServer,
-  type SimulateTransactionResponse,
-  type GetTransactionResponse,
-} from "@stellar/stellar-sdk/rpc";
+import { Server as SorobanServer, Api } from "@stellar/stellar-sdk/rpc";
 import { signTransaction, APP_STELLAR_NETWORK } from "./stellar";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -55,7 +51,7 @@ export type PipelineStep =
 
 export interface SimulationLog {
   /** Raw simulation response from the RPC */
-  raw: SimulateTransactionResponse;
+  raw: Api.SimulateTransactionResponse;
   /** CPU instructions consumed */
   cpuInsns: string;
   /** Memory bytes consumed */
@@ -113,26 +109,29 @@ function getRpc(): SorobanServer {
   return new SorobanServer(RPC_URL);
 }
 
-function extractSimulationLog(sim: SimulateTransactionResponse): SimulationLog {
-  // The RPC response shape for a successful simulation
-  const cost = (sim as { cost?: { cpuInsns?: string; memBytes?: string } }).cost;
-  const minFee = (sim as { minResourceFee?: string }).minResourceFee ?? "0";
-  const footprint = (
-    sim as {
-      transactionData?: {
-        readBytes?: () => number;
-        writeBytes?: () => number;
-      };
-    }
-  ).transactionData;
+function extractSimulationLog(sim: Api.SimulateTransactionResponse): SimulationLog {
+  // SimulateTransactionSuccessResponse carries transactionData (SorobanDataBuilder)
+  // and minResourceFee. The cost field is not in the parsed type but may appear
+  // on the raw response — we access it defensively.
+  const asAny = sim as Record<string, unknown>;
+  const cost = asAny["cost"] as { cpuInsns?: string; memBytes?: string } | undefined;
+  const minFee =
+    "minResourceFee" in sim
+      ? (sim as Api.SimulateTransactionSuccessResponse).minResourceFee
+      : "0";
+  const transactionData =
+    "transactionData" in sim
+      ? (sim as Api.SimulateTransactionSuccessResponse).transactionData
+      : null;
 
   return {
     raw: sim,
     cpuInsns: cost?.cpuInsns ?? "0",
     memBytes: cost?.memBytes ?? "0",
     minResourceFee: minFee,
-    readBytes: footprint?.readBytes?.() ?? 0,
-    writeBytes: footprint?.writeBytes?.() ?? 0,
+    // SorobanDataBuilder exposes readBytes/writeBytes as numbers
+    readBytes: (transactionData as { readBytes?: number } | null)?.readBytes ?? 0,
+    writeBytes: (transactionData as { writeBytes?: number } | null)?.writeBytes ?? 0,
   };
 }
 
@@ -308,7 +307,7 @@ async function pollForConfirmation(
   for (let attempt = 0; attempt < POLL_MAX_RETRIES; attempt++) {
     await sleep(POLL_INTERVAL_MS);
 
-    let result: GetTransactionResponse;
+    let result: Api.GetTransactionResponse;
     try {
       result = await rpc.getTransaction(txHash);
     } catch {
@@ -316,17 +315,17 @@ async function pollForConfirmation(
       continue;
     }
 
-    if (result.status === "SUCCESS") {
+    if (result.status === Api.GetTransactionStatus.SUCCESS) {
       return txHash;
     }
 
-    if (result.status === "FAILED") {
-      const detail =
-        (result as { resultXdr?: string }).resultXdr ?? "no detail available";
+    if (result.status === Api.GetTransactionStatus.FAILED) {
+      // resultXdr is an xdr.TransactionResult on the parsed response
+      const detail = "resultXdr" in result ? String(result.resultXdr) : "no detail available";
       throw new Error(`Transaction failed on-chain (hash: ${txHash}): ${detail}`);
     }
 
-    // status === "NOT_FOUND" → still pending, continue polling
+    // status === NOT_FOUND → still pending, continue polling
   }
 
   const timeoutSecs = (POLL_MAX_RETRIES * POLL_INTERVAL_MS) / 1_000;
@@ -367,4 +366,4 @@ function errorMessage(err: unknown): string {
 // ─── Re-exports for convenience ───────────────────────────────────────────────
 
 export { APP_STELLAR_NETWORK, NETWORK_PASSPHRASE };
-export type { SimulateTransactionResponse };
+export type { Api };
