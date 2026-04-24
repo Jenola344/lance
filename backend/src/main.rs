@@ -12,6 +12,7 @@ mod models;
 mod routes;
 mod services;
 mod worker;
+mod indexer;
 
 pub use db::AppState;
 
@@ -36,7 +37,8 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!("./migrations").run(&pool).await?;
 
     let state = AppState::new(pool.clone());
-    tokio::spawn(worker::run_judge_worker(pool));
+    tokio::spawn(worker::run_judge_worker(pool.clone()));
+    tokio::spawn(indexer::run_indexer_worker(pool));
 
     let app = build_router(state);
 
