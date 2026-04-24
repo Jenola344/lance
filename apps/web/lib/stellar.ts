@@ -30,7 +30,6 @@ export function disconnectWallet(): void {
 export function getWalletsKit(): any {
   return {
     openModal: (params: any) => {
-      // Fire the callback to prevent the UI/tests from hanging
       if (typeof params?.onWalletSelected === "function") {
         params.onWalletSelected({ id: "freighter", name: "Freighter" });
       }
