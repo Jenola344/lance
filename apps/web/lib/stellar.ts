@@ -1,9 +1,11 @@
 import { StellarWalletsKit, Networks } from "@creit.tech/stellar-wallets-kit";
 import { StrKey, Transaction } from "@stellar/stellar-sdk";
+import { categorizeWalletError } from "./wallet-errors";
 
 let kit: StellarWalletsKit | null = null;
 
 export type StellarNetwork = Networks.TESTNET | Networks.PUBLIC;
+export { Networks };
 
 export const APP_STELLAR_NETWORK: StellarNetwork =
   (process.env.NEXT_PUBLIC_STELLAR_NETWORK as StellarNetwork) ?? Networks.TESTNET;
@@ -52,7 +54,8 @@ export async function connectWallet(): Promise<string> {
           const { address } = await walletsKit.getAddress();
           resolve(assertValidStellarAddress(address));
         } catch (err) {
-          reject(err);
+          const walletError = categorizeWalletError(err);
+          reject(new Error(walletError.userFriendlyMessage));
         }
       },
       onClosed: () => reject(new Error("Wallet connection cancelled by user.")),
@@ -102,11 +105,15 @@ export async function signTransaction(xdr: string): Promise<string> {
   const walletsKit = getWalletsKit();
   const validatedXdr = assertValidTransactionXdr(xdr);
 
-  const { signedTxXdr } = await walletsKit.signTransaction(validatedXdr, {
-    networkPassphrase: APP_STELLAR_NETWORK,
-  });
-
-  return assertValidTransactionXdr(signedTxXdr);
+  try {
+    const { signedTxXdr } = await walletsKit.signTransaction(validatedXdr, {
+      networkPassphrase: APP_STELLAR_NETWORK,
+    });
+    return assertValidTransactionXdr(signedTxXdr);
+  } catch (err) {
+    const walletError = categorizeWalletError(err);
+    throw new Error(walletError.userFriendlyMessage);
+  }
 }
 
 
