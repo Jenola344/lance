@@ -10,6 +10,7 @@ import {
 } from "@/lib/job-registry";
 import { useTxStatusStore } from "@/lib/store/use-tx-status-store";
 import { useTransactionToast } from "@/hooks/use-transaction-toast";
+import { connectWallet, getConnectedWalletAddress } from "@/lib/stellar";
 
 /**
  * Hook to manage the lifecycle of submitting a bid to the job registry.
@@ -30,10 +31,10 @@ export function useSubmitBid() {
       setIsSubmitting(true);
       reset();
 
-      const toastId = showLoading({
-        title: "Submitting Bid",
-        description: "Preparing your proposal for the blockchain...",
-      });
+      const toastId = showLoading(
+        "Submitting Bid",
+        "Preparing your proposal for the blockchain...",
+      );
 
       try {
         // ─── Step 1: Off-chain Record ─────────────────────────────────────
@@ -56,28 +57,34 @@ export function useSubmitBid() {
           }
         };
 
+        // ── Step 1.5: Wallet Address ─────────────────────────────────────
+        const freelancer = (await getConnectedWalletAddress()) ?? (await connectWallet());
+
         const result = await submitBid(
           {
-            onChainJobId: params.onChainJobId,
-            proposal: params.proposal,
+            jobId: params.onChainJobId,
+            freelancerAddress: freelancer,
+            proposalHash: params.proposal,
           },
           onStep,
         );
 
         // ─── Step 3: Success ──────────────────────────────────────────────
         setSimulation(result.simulation);
-        updateToSuccess(toastId, {
-          title: "Bid Submitted",
-          description: "Your proposal has been recorded on the Stellar network.",
-        });
+        updateToSuccess(
+          toastId,
+          "Bid Submitted",
+          "Your proposal has been recorded on the Stellar network.",
+        );
 
         return { bid, txHash: result.txHash };
       } catch (error) {
         setStep("failed", error instanceof Error ? error.message : "Unknown error");
-        updateToError(toastId, {
-          title: "Submission Failed",
-          description: error instanceof Error ? error.message : "Blockchain transaction failed.",
-        });
+        updateToError(
+          toastId,
+          "Submission Failed",
+          error instanceof Error ? error.message : "Blockchain transaction failed.",
+        );
         throw error;
       } finally {
         setIsSubmitting(false);
