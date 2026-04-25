@@ -1,3 +1,4 @@
+pub mod activity;
 pub mod appeals;
 pub mod auth;
 pub mod bids;
@@ -10,7 +11,6 @@ pub mod milestones;
 pub mod uploads;
 pub mod users;
 pub mod verdicts;
-pub mod activity;
 
 use crate::db::AppState;
 use axum::{routing::get, Router};

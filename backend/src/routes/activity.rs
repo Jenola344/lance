@@ -1,11 +1,18 @@
-use crate::{db::AppState, error::Result, models::{ActivityLog, CreateActivityLogRequest}};
-use axum::{routing::get, Json, Router, extract::{Query, State}};
+use crate::{
+    db::AppState,
+    error::Result,
+    models::{ActivityLog, CreateActivityLogRequest},
+};
+use axum::{
+    extract::{Query, State},
+    routing::get,
+    Json, Router,
+};
 use serde::Deserialize;
 use sqlx::QueryBuilder;
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/logs", get(list_logs).post(create_log))
+    Router::new().route("/logs", get(list_logs).post(create_log))
 }
 
 #[derive(Deserialize)]
@@ -16,11 +23,15 @@ struct ListQuery {
     offset: Option<i64>,
 }
 
-async fn list_logs(Query(q): Query<ListQuery>, State(state): State<AppState>) -> Result<Json<Vec<ActivityLog>>> {
+async fn list_logs(
+    Query(q): Query<ListQuery>,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<ActivityLog>>> {
     let limit = q.limit.unwrap_or(50);
     let offset = q.offset.unwrap_or(0);
 
-    let mut query_builder: QueryBuilder<sqlx::Postgres> = QueryBuilder::new("SELECT * FROM activity_logs");
+    let mut query_builder: QueryBuilder<sqlx::Postgres> =
+        QueryBuilder::new("SELECT * FROM activity_logs");
 
     let mut has_where = false;
     if let Some(job_id) = q.job_id {
@@ -49,7 +60,10 @@ async fn list_logs(Query(q): Query<ListQuery>, State(state): State<AppState>) ->
     Ok(Json(rows))
 }
 
-async fn create_log(State(state): State<AppState>, Json(req): Json<CreateActivityLogRequest>) -> Result<Json<ActivityLog>> {
+async fn create_log(
+    State(state): State<AppState>,
+    Json(req): Json<CreateActivityLogRequest>,
+) -> Result<Json<ActivityLog>> {
     let level = req.level.unwrap_or_else(|| "info".to_string());
     let details = req.details.unwrap_or_else(|| serde_json::json!({}));
 
@@ -66,4 +80,3 @@ async fn create_log(State(state): State<AppState>, Json(req): Json<CreateActivit
 
     Ok(Json(rec))
 }
-
