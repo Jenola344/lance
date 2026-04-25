@@ -25,12 +25,17 @@ const nextConfig: NextConfig = {
 
       // ── 2. Node.js built-in fallbacks ────────────────────────────────────────
       // stellar-sdk references several Node built-ins. In the browser these
-      // should either be polyfilled or silently stubbed out.
+      // should either be polyfilled or silently stubbed out. We only stub the
+      // ones that are not already handled by Next.js defaults.
       config.resolve.fallback = {
         ...config.resolve.fallback,
+        // These are used by sodium-native / node-gyp paths — not needed client-side
         fs: false,
         path: false,
+        // crypto is used by stellar-base; Next.js already polyfills it via
+        // the `crypto-browserify` package, but we set it explicitly to be safe.
         crypto: false,
+        // net / tls / dns are pulled in transitively by some HTTP clients
         net: false,
         tls: false,
         dns: false,
