@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { AlertCircle, LoaderCircle } from "lucide-react";
 import { z } from "zod";
 import { api } from "@/lib/api";
-import { toast } from "@/lib/toast";
 import { useSubmitBid } from "@/hooks/use-submit-bid";
 import { TransactionTracker } from "@/components/transaction/transaction-tracker";
 import { useTxStatusStore } from "@/lib/store/use-tx-status-store";
@@ -87,7 +86,7 @@ export function SubmitBidModal({
         Submit Bid
       </button>
 
-      {open ? (
+      {open && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/75 p-4 backdrop-blur-sm sm:items-center"
           role="presentation"
@@ -114,6 +113,7 @@ export function SubmitBidModal({
                 </p>
               </div>
             </div>
+
             <div className="mt-6">
               {isContractActive || isSubmitting ? (
                 <div className="space-y-4">
@@ -194,7 +194,7 @@ export function SubmitBidModal({
             </div>
           </section>
         </div>
-      ) : null}
+      )}
     </>
   );
 }
