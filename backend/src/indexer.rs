@@ -40,8 +40,10 @@ pub async fn run_indexer_worker(pool: PgPool) {
             Ok(processed_something) => {
                 backoff = Duration::from_secs(1); // reset backoff
                 let elapsed = start_time.elapsed().as_millis() as u64;
-                metrics().last_loop_duration_ms.store(elapsed, Ordering::Relaxed);
-                
+                metrics()
+                    .last_loop_duration_ms
+                    .store(elapsed, Ordering::Relaxed);
+
                 if !processed_something {
                     // Sleep if caught up
                     tokio::time::sleep(Duration::from_secs(5)).await;
@@ -230,39 +232,47 @@ async fn process_event_side_effects(
             // Decoding logic for Deposit event
             // topics: ["deposit", sender (ScVal), token (ScVal)]
             // value: amount (i128 ScVal)
-            
+
             let sender = topics
                 .and_then(|a| a.get(1))
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
-                
+
             let token = topics
                 .and_then(|a| a.get(2))
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
-                
-            let amount = event.get("value")
+
+            let amount = event
+                .get("value")
                 .and_then(|v| v.get("xdr"))
                 .and_then(|v| v.as_str())
-                // In a real app, we decode the XDR. 
+                // In a real app, we decode the XDR.
                 // For this implementation, we take what we can or use a placeholder.
-                .map(|_| 0i64) 
+                .map(|_| 0i64)
                 .unwrap_or(0);
 
             let event_id = event.get("id").and_then(|v| v.as_str()).unwrap_or("");
-            let ledger = event.get("ledger")
+            let ledger = event
+                .get("ledger")
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<i64>().ok())
                 .unwrap_or(0);
-            let contract_id = event.get("contractId").and_then(|v| v.as_str()).unwrap_or("");
+            let contract_id = event
+                .get("contractId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
 
-            info!("Indexer: Found deposit event: {} from {} to {}", amount, sender, contract_id);
+            info!(
+                "Indexer: Found deposit event: {} from {} to {}",
+                amount, sender, contract_id
+            );
 
             // Insert into deposits table
             sqlx::query(
                 "INSERT INTO deposits (id, ledger, contract_id, sender, amount, token) 
                  VALUES ($1, $2, $3, $4, $5, $6) 
-                 ON CONFLICT (id) DO NOTHING"
+                 ON CONFLICT (id) DO NOTHING",
             )
             .bind(event_id)
             .bind(ledger)

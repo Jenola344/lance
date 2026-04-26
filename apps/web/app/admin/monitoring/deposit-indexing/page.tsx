@@ -2,33 +2,25 @@
 
 import React, { useState, useEffect } from "react";
 import { 
-  Activity, 
   Database, 
   RefreshCw, 
   Terminal, 
-  AlertCircle, 
-  CheckCircle2, 
-  TrendingUp,
-  Cpu,
-  Clock,
-  ArrowDownLeft,
-  ShieldCheck,
-  Zap
+  Cpu, 
+  Clock, 
+  ArrowDownLeft, 
+  ShieldCheck, 
+  Zap 
 } from "lucide-react";
 import { 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar
+  ResponsiveContainer, 
+  AreaChart, 
+  Area 
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useIndexerStatus } from "@/hooks/use-indexer-status";
 
 // Simulation for historical metrics since we don't have a time-series DB yet
@@ -66,18 +58,23 @@ export default function DepositMonitoringDashboard() {
   useEffect(() => {
     if (!status) return;
 
-    setChartData(prev => {
-      const newData = [...prev.slice(1), {
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        throughput: status.total_events_processed % 5 + 1, // simulated throughput variation
-        latency: status.last_loop_duration_ms || 42, 
-      }];
-      return newData;
-    });
+    // Use a small delay to avoid cascading render warnings from synchronous state updates in effect
+    const timeoutId = setTimeout(() => {
+      setChartData(prev => {
+        const newData = [...prev.slice(1), {
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          throughput: status.total_events_processed % 5 + 1, // simulated throughput variation
+          latency: status.last_loop_duration_ms || 42, 
+        }];
+        return newData;
+      });
 
-    if (status.last_loop_duration_ms > 1000) {
-      addLog(`High indexing latency detected: ${status.last_loop_duration_ms}ms`, 'warn');
-    }
+      if (status.last_loop_duration_ms > 1000) {
+        addLog(`High indexing latency detected: ${status.last_loop_duration_ms}ms`, 'warn');
+      }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [status]);
 
   if (isLoading) return (
@@ -95,7 +92,7 @@ export default function DepositMonitoringDashboard() {
       <div className="flex items-center gap-2 mb-6">
         <div className={`h-2 w-2 rounded-full ${status?.in_sync ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
         <span className="text-[10px] text-zinc-500 tracking-tighter uppercase font-bold">
-          System::{status?.in_sync ? 'Operational' : 'Sync_Required'} // {status?.rpc.url}
+          System::{status?.in_sync ? 'Operational' : 'Sync_Required'} {" // "} {status?.rpc.url}
         </span>
       </div>
 
