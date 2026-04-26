@@ -58,7 +58,7 @@ function persistSession(address: string | null): void {
 }
 
 export function useWalletSession() {
-  const [address, setAddress] = useState<string | null>(null);
+  const [address, setAddress] = useState<string | null>(() => readCachedSession()?.address ?? null);
   const [walletNetwork, setWalletNetwork] = useState<StellarNetwork | null>(null);
   const [walletPassphrase, setWalletPassphrase] = useState<string | null>(null);
   const [xlmBalance, setXlmBalance] = useState<number | null>(null);
@@ -66,7 +66,7 @@ export function useWalletSession() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connectionStep, setConnectionStep] = useState("");
+  const [connectionStep] = useState("");
   const [siwsResponse, setSiwsResponse] = useState<SIWSResponse | null>(null);
 
   const refreshWalletState = useCallback(async () => {
@@ -92,10 +92,10 @@ export function useWalletSession() {
     const cached = readCachedSession();
 
     if (cached?.address) {
-      setAddress(cached.address);
+      // Address is already initialized from cache in useState
     }
 
-    void refreshWalletState();
+    setTimeout(() => void refreshWalletState(), 0);
   }, [refreshWalletState]);
 
   const connect = useCallback(async () => {
@@ -177,7 +177,6 @@ export function useWalletSession() {
     isAuthenticating,
     networkMismatch,
     error,
-    connectionStep,
     siwsResponse,
     connect,
     authenticate,
