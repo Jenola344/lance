@@ -57,7 +57,11 @@ pub async fn put(
     is_final: bool,
     ttl: CacheTtl,
 ) -> sqlx::Result<CachedTxMetadata> {
-    let lifetime = if is_final { ttl.final_ttl } else { ttl.pending_ttl };
+    let lifetime = if is_final {
+        ttl.final_ttl
+    } else {
+        ttl.pending_ttl
+    };
     let expires_at = Utc::now() + lifetime;
     sqlx::query_as::<_, CachedTxMetadata>(
         "INSERT INTO transaction_metadata_cache (tx_hash, metadata, fetched_at, expires_at)
