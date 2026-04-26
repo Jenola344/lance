@@ -94,7 +94,7 @@ export function useLiveJobWorkspace(jobId: string): LiveJobWorkspace {
   }
 
   useEffect(() => {
-    void refresh();
+    setTimeout(() => void refresh(), 0);
 
     const interval = window.setInterval(() => {
       void refresh();

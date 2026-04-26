@@ -91,7 +91,7 @@ export function useWalletSession() {
       // Address is already initialized from cache in useState
     }
 
-    void refreshWalletState();
+    setTimeout(() => void refreshWalletState(), 0);
   }, [refreshWalletState]);
 
   const connect = useCallback(async () => {
