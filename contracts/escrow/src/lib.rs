@@ -181,6 +181,7 @@ pub enum DataKey {
     Config,
     GuardFlag(u64),
     Treasury,
+    IsPaused,
 }
 
 #[contracttype]
@@ -356,6 +357,30 @@ impl EscrowContract {
         env.storage().instance().set(&DataKey::Config, &config);
     }
 
+    pub fn is_paused(env: &Env) -> bool {
+        env.storage().instance().get(&DataKey::IsPaused).unwrap_or(false)
+    }
+
+    pub fn pause(env: Env) {
+        let config: ContractConfig = env
+            .storage()
+            .instance()
+            .get(&DataKey::Config)
+            .expect("not initialized");
+        config.admin.require_auth();
+        env.storage().instance().set(&DataKey::IsPaused, &true);
+    }
+
+    pub fn unpause(env: Env) {
+        let config: ContractConfig = env
+            .storage()
+            .instance()
+            .get(&DataKey::Config)
+            .expect("not initialized");
+        config.admin.require_auth();
+        env.storage().instance().set(&DataKey::IsPaused, &false);
+    }
+
     /// Admin can update the Agent Judge address.
     pub fn set_agent_judge(env: Env, new_agent_judge: Address) {
         let mut config: ContractConfig = env
@@ -413,6 +438,7 @@ impl EscrowContract {
         freelancer: Address,
         token_addr: Address,
     ) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         client.require_auth();
         let key = DataKey::Job(job_id);
         if env.storage().persistent().has(&key) {
@@ -470,6 +496,7 @@ impl EscrowContract {
     /// - `InvalidInput` — `amount` is zero or negative.
     /// - `MaxMilestonesExceeded` — already at the `MAX_MILESTONES` (12) limit.
     pub fn add_milestone(env: Env, job_id: u64, amount: i128) -> Result<(), EscrowError> {
+        assert!(!Self::is_paused(&env), "contract is paused");
         let key = DataKey::Job(job_id);
         let mut job: EscrowJob = env
             .storage()
@@ -503,6 +530,7 @@ impl EscrowContract {
         }
     /// Add a milestone to the job (setup phase only).
     pub fn add_milestone(env: Env, job_id: u64, amount: i128) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         let key = DataKey::Job(job_id);
         let mut job: EscrowJob = env.storage().persistent().get(&key).expect("job not found");
         job.client.require_auth();
@@ -519,6 +547,7 @@ impl EscrowContract {
 
     /// Client deposits total amount and transitions job to Funded.
     pub fn deposit(env: Env, job_id: u64, amount: i128) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         let key = DataKey::Job(job_id);
         let mut job: EscrowJob = env.storage().persistent().get(&key).expect("job not found");
         job.client.require_auth();
@@ -550,6 +579,7 @@ impl EscrowContract {
 
     /// Client approves a milestone -- releases next pending milestone to freelancer.
     pub fn release_milestone(env: Env, job_id: u64, caller: Address) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         caller.require_auth();
         Self::check_reentrancy(&env, job_id);
 
@@ -605,6 +635,7 @@ impl EscrowContract {
 
     /// Happy-path release for an explicit milestone index (0-based).
     pub fn release_funds(env: Env, job_id: u64, caller: Address, milestone_index: u32) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         caller.require_auth();
         Self::check_reentrancy(&env, job_id);
 
@@ -628,6 +659,7 @@ impl EscrowContract {
 
     /// Either party opens a dispute, locking remaining funds.
     pub fn open_dispute(env: Env, job_id: u64, caller: Address) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         caller.require_auth();
 
         let key = DataKey::Job(job_id);
@@ -668,6 +700,7 @@ impl EscrowContract {
     /// Either party formally raises a dispute with on-chain event emission.
     /// Locks funds, transitions state to Disputed, and signals the AI Judge.
     pub fn raise_dispute(env: Env, job_id: u64, caller: Address) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         // 1. Authenticate the caller
         caller.require_auth();
 
@@ -742,6 +775,7 @@ impl EscrowContract {
     /// `payee_amount`: Amount to pay to the freelancer (payee).
     /// `payer_amount`: Amount to return to the client (payer).
     pub fn resolve_dispute(env: Env, job_id: u64, payee_amount: i128, payer_amount: i128) {
+        assert!(!Self::is_paused(&env), "contract is paused");
         let config: ContractConfig = env
             .storage()
             .instance()
@@ -868,6 +902,7 @@ impl EscrowContract {
     /// - `InvalidState` — job is not in a terminal state, or remaining balance > 0.
     /// - `ArithmeticError` — underflow when computing `total_amount - released_amount`.
     pub fn cleanup_job(env: Env, job_id: u64, caller: Address) -> Result<(), EscrowError> {
+        assert!(!Self::is_paused(&env), "contract is paused");
         // [SC-ESC-019]: Caller must authenticate before triggering de-allocation.
         caller.require_auth();
 
@@ -1085,6 +1120,7 @@ exit_reentrancy_guard(&env);
         signers: Vec<Address>,
         required_signatures: u32,
     ) -> Result<(), EscrowError> {
+        assert!(!Self::is_paused(&env), "contract is paused");
         let key = DataKey::Job(job_id);
         let mut job: EscrowJob = env
             .storage()
@@ -1136,6 +1172,7 @@ exit_reentrancy_guard(&env);
 
     /// Sign a multisig job. Callable by any configured signer.
     pub fn sign_multisig(env: Env, job_id: u64, signer: Address) -> Result<(), EscrowError> {
+        assert!(!Self::is_paused(&env), "contract is paused");
         signer.require_auth();
 
         let key = DataKey::Job(job_id);
